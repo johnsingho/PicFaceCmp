@@ -232,7 +232,11 @@ bool CPicFaceCmpDlg::TryInitFaceCmp()
     int nRet = initialCompare();
     if(S_OK!=nRet)
     {
+#ifndef USE_NEW_SDK
         const char* pstrErr = "人脸识别模块初始化失败！";
+#else
+        const char* pstrErr = "使用新版SDK，注意机器时间应该是2016年，否则结果有误！";
+#endif        
         PromptInfo(pstrErr);
         return false;
     }
@@ -312,9 +316,14 @@ bool CPicFaceCmpDlg::ComparePictures(float& fScore)
     pbyPixel = pic2.GetData();
     GetGrayPixel(pImg2, pbyPixel->width, pbyPixel->height, &pbyPixel->pixel[0]);
     
-
+#ifndef USE_NEW_SDK
     extern HW_HANDLE MyHandle;
     fScore=TestCompare1V1(MyHandle, pic1.GetData(), pic2.GetData());
+#else
+    extern HW_HANDLE MyHandle;
+    float fInit = 0.322F;
+    fScore=TestCompare1V1(MyHandle, pic1.GetData(), pic2.GetData(), fInit, 0);
+#endif
 
     cvReleaseImage(&pImg1);
     cvReleaseImage(&pImg2);

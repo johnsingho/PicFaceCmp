@@ -3,9 +3,8 @@
 
 typedef long HWRESULT;
 typedef void*  HW_HANDLE;
-#ifndef  S_OK
-#define S_OK   0
-#endif
+
+#define S_OK  0
 #define S_FAIL 1
 
 #define LEFT_EYE   6
@@ -56,9 +55,9 @@ typedef struct tagKeyPos
 #ifndef HW_FACE_INFO
 #define HW_FACE_INFO
 typedef struct tagHWFaceInfo{
-    Rect  m_FaceRect;//人脸框
-    float m_afKeyPoint[81*2];//81关键点
-    KeyPos m_KeyPos;//14关键点
+    Rect  m_FaceRect;//人脸定位框
+    float m_afKeyPoint[81*2];//
+    KeyPos m_KeyPos;//
 }HWFaceInfo;
 #endif
 
@@ -68,17 +67,24 @@ extern "C"
 #endif
 
 
-//初始化字典, strName 输入HWDetect.dll所在路径，如"D:\\Prog"
+//初始化核心, strName 输入dll所在路径，如"D:\\Prog"
 //程序加载后运行一次，先于HWInitial运行
+//return: S_OK, S_FAIL
 HWRESULT HWInitialD( char *strName);
+
+//释放核心
 //程序退出前运行一次
+//return: S_OK, S_FAIL
 HWRESULT HWReleaseD( );
 
-//初始化一个HANDLE, strName 输入NULL
-//可以运行多个实例
+//初始化一个HANDLE . 多线程情况下各个线程初始化各自的Handle,
+//pHandle [output]指向初始化好的Handle
+//strName [input]NULL
+//return: S_OK, S_FAIL
 HWRESULT HWInitial( HW_HANDLE *pHandle, char *strName);
 
-
+//释放Handle
+//pHandle [input]指向HWInitial初始化好的Handle
 HWRESULT HWRelease( HW_HANDLE *pHandle);
 
 /**************************************************
@@ -86,74 +92,56 @@ HWRESULT HWRelease( HW_HANDLE *pHandle);
     人脸定位
     
 *************************************************/
-
-
-                 
+//人脸定位
+//Handle [input] HWInitial初始化好的Handle
+//pImg   [input] 输入图片灰度信息，数据内容:图片从左上到右下，逐行 每行从左到右逐点排列各像素的灰度值
+//nImgWidth nImgHeight [input] 图片的宽度高度
+//pnMaxFace [input] 需要定位最多人脸个数 （1~10)
+//          [output] *pnMaxFace 为实际定位的人脸个数
+//pFaceInfo [output] 输出每个人脸定位信息。 需要外部申请*pnMaxFace个 HWFaceInfo空间。
+//return: S_OK, S_FAIL
 HWRESULT HWDetectFaceKeyPoints( HW_HANDLE Handle,
                             const unsigned char*pImg, 
                             int nImgWidth, int nImgHeight,
                             int* pnMaxFace, 
                             HWFaceInfo *pFaceInfo);
 
-
-//设置可以定位的脸的大小范围
-//iMinScale: 0~3。 0 时，可以定位的最小人脸可以达到两眼中心距离25个像素。
-//                 1 时，可以定位的最小人脸可以达到两眼中心距离35个像素
-//                 2 时, 可以定位的最小人脸可以达到两眼中心距离45个像素
-//                 3 时, 可以定位的最小人脸可以达到两眼中心距离64个像素
-//iScaleCover:5~9。 设置可以定位的人脸的大小级别变化范围。iMinScale + iScaleCover <=9
-//                  5 时，可定位的最大人脸眼距是最小人脸眼距的3.3倍。
-//                  6 时，可定位的最大人脸眼距是最小人脸眼距的4.5倍。
-//                  7 时，可定位的最大人脸眼距是最小人脸眼距的6倍。
-//                  8 时，可定位的最大人脸眼距是最小人脸眼距的8.2倍。
-//                  9 时，可定位的最大人脸眼距是最小人脸眼距的11倍。
-//设置注意iMinScale + iScaleCover <=9
-//默认设置: iMinScale = 1, iScaleCover = 7.
-//iMinScale越小，需要花的时间越长；iScaleCover越大，花得时间越长。
-//如果输入的数值超出范围，内部恢复默认设置。
+//设置是否大头照之类的证件照片。如果确定是证件照，则可以设置iPortrait = 1,否则设为0。
+//设为1则定位较容易。
+//Handle [input] HWInitial初始化好的Handle
+//iPortrait [input] 1 是的。0 不确定。
 //return: S_OK, S_FAIL
-HWRESULT HWSetLocationScale( HW_HANDLE Handle, int iMinScale, int iScaleCover );
-
-//取得Scale设定值。
-//return : S_OK, S_FAIL
-HWRESULT HWGetLocationScale( HW_HANDLE Handle, int *piMinScale, int *piScaleCover );
-
-//设置定位阈值。
-//设置核心返回得分大于阈值的脸和眼睛，线性核版本　默认眼睛阈值0.3,脸阈值0.3
-//阈值设置范围：fFace : 0.0f ~ 1.0f, fEye: 0.0f ~ 1.0f
-//阈值越大，限制越严格。
-//return : S_OK, S_FAIL
-HWRESULT HWSetLocationThreshold( HW_HANDLE Handle,float fFace, float fEye );
-
-//return : S_OK, S_FAIL
-HWRESULT HWGetLocationThreshold( HW_HANDLE Handle,float *pfFace, float *pfEye );
-                               
-
+HWRESULT HWSetPortrait( HW_HANDLE Handle, int iPortrait);
 /**************************************************
 
     特征和比对
 
 /*************************************************/
-//return : 特征长度字节个数。
+//
+//Handle [input] HWInitial初始化好的Handle
+//piFtrSize [output] 输出特征字节个数
+//return: S_OK, S_FAIL
 HWRESULT HWGetFeatureSize( HW_HANDLE Handle, int *piFtrSize );
 
 
 //提取特征。
-//pImg[in] 输入图片
-//nImgWidth, nImgHeight[in] 宽度高度
-//pFaceInfo [in]一个人脸信息
-//pOutFeature [out]输出特征串。特征串长度见HWGetFeatureSize， 需要外部申请好。
+//Handle [input] HWInitial初始化好的Handle
+//pImg   [input] 输入图片灰度信息。数据内容:图片从左上到右下，逐行 每行从左到右逐点排列各像素的灰度值
+//nImgWidth, nImgHeight[input] 图片的宽度高度
+//pFaceInfo   [input] 一个人脸信息
+//pOutFeature [output]输出特征串。特征串长度见HWGetFeatureSize， 需要外部申请好。
 //return : S_OK. other failed
 HWRESULT HWExtractFeature( HW_HANDLE Handle,
                           const unsigned char* pImg, int nImgWidth, int nImgHeight,
                           HWFaceInfo *pFaceInfo,
-						  unsigned char *pOutFeature);
+						              unsigned char *pOutFeature);
 
 
-//用于单独比较两张图片的特征串相似性。注意其得分拒识功能较弱。
-//pFeaA[in] 特征串
-//pFeaB[in] 特征串
-//fScore[out] 相似性度量值，0~1.0 ，越大越相似。
+//用于单独比较两张图片的特征串相似性。
+//Handle [input] HWInitial初始化好的Handle
+//pFeaA  [input] 特征串
+//pFeaB  [input] 特征串
+//fScore [output] 相似性度量值，0~1.0 ，越大越相似。
 //return : S_OK. other failed
 HWRESULT  HWCompareFeature( HW_HANDLE Handle,
                             const unsigned char *pFeaA,

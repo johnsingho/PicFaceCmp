@@ -19,7 +19,8 @@ PICPIXEL* CreatePicPixel(int nW, int nH);
 void DeletePicPixel(PICPIXEL* pPicPixel);
 
 int   InitEngine();
-float TestCompare1V1( HW_HANDLE MyHandle, PICPIXEL* pIDPic, PICPIXEL* pLivePic);
+//float TestCompare1V1( HW_HANDLE MyHandle, PICPIXEL* pIDPic, PICPIXEL* pLivePic);
+float TestCompare1V1( HW_HANDLE MyHandle, PICPIXEL* pIDPic, PICPIXEL* pLivePic, float fInitFaceCmpRate, int bPortrait=1);
 //void  TestCompare1VN( HW_HANDLE MyHandle);
 void  ReleaseEngine();
 int   initialCompare();
