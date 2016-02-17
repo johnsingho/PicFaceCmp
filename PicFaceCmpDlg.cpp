@@ -15,6 +15,9 @@ static char THIS_FILE[] = __FILE__;
 #endif
 
 /////////////////////////////////////////////////////////////////////////////
+void CopyPixelData( unsigned char* pixel, IplImage* pImg );
+
+/////////////////////////////////////////////////////////////////////////////
 // CAboutDlg dialog used for App About
 
 class CAboutDlg : public CDialog
@@ -290,32 +293,45 @@ private:
 
 bool CPicFaceCmpDlg::ComparePictures(float& fScore)
 {
-    IplImage* pImg1 = cvLoadImage(m_strPicFile1);
+    IplImage* pImg1 = cvLoadImage(m_strPicFile1, CV_LOAD_IMAGE_GRAYSCALE);
     if(!pImg1)
     {
         PromptInfo("加载图片1失败");
         return false;
     }
-    IplImage* pImg2 = cvLoadImage(m_strPicFile2);
+    IplImage* pImg2 = cvLoadImage(m_strPicFile2, CV_LOAD_IMAGE_GRAYSCALE);
     if(!pImg2)
     {
         PromptInfo("加载图片2失败");
         cvReleaseImage(&pImg1);
         return false;
     }
-
-    PICPIXEL* pbyPixel = NULL;
-    CPicPixel pic1(pImg1, pImg1->width+10, pImg1->height+10);
-    CPicPixel pic2(pImg2, pImg2->width+10, pImg2->height+10);
-    pbyPixel = pic1.GetData();
-    GetGrayPixel(pImg1, pbyPixel->width, pbyPixel->height, &pbyPixel->pixel[0]);
-    pbyPixel = pic2.GetData();
-    GetGrayPixel(pImg2, pbyPixel->width, pbyPixel->height, &pbyPixel->pixel[0]);
     
-
+    PICPIXEL* pbyPixel = NULL;
+    CPicPixel pic1(pImg1, pImg1->widthStep, pImg1->height);
+    CPicPixel pic2(pImg2, pImg2->widthStep, pImg2->height);
+    pbyPixel = pic1.GetData();
+    //GetGrayPixel(pImg1, pbyPixel->width, pbyPixel->height, &pbyPixel->pixel[0]);
+    CopyPixelData(&pbyPixel->pixel[0], pImg1);
+    
+    pbyPixel = pic2.GetData();
+    //GetGrayPixel(pImg2, pbyPixel->width, pbyPixel->height, &pbyPixel->pixel[0]);
+    CopyPixelData(&pbyPixel->pixel[0], pImg2);
+    
     extern HW_HANDLE MyHandle;
+    if(!MyHandle)
+    {
+        TRACE("人脸识别库初始化失败！\n");
+        PromptInfo("人脸识别库初始化失败！");
+        return false;
+    }
+#ifndef USE_NEW_SDK    
     fScore=TestCompare1V1(MyHandle, pic1.GetData(), pic2.GetData());
-
+#else    
+    float fInit = 0.322F;
+    fScore=TestCompare1V1(MyHandle, pic1.GetData(), pic2.GetData(), fInit, 0);
+#endif
+    
     cvReleaseImage(&pImg1);
     cvReleaseImage(&pImg2);
     PromptInfo("对比完成\n");
@@ -333,3 +349,7 @@ void CPicFaceCmpDlg::OnClose()
 	CDialog::OnClose();
 }
 
+void CopyPixelData( unsigned char* pOutPixel, IplImage* pImgGray)
+{
+    memcpy(pOutPixel, pImgGray->imageData, pImgGray->imageSize);
+}
